@@ -26,6 +26,8 @@
 #include <Eigen/Core>
 #include <tuple>
 #include <vector>
+#include <stdio.h>
+#include <fstream>
 
 #include "kiss_icp/core/Deskew.hpp"
 #include "kiss_icp/core/Preprocessing.hpp"
@@ -75,7 +77,9 @@ KissICP::Vector3dVectorTuple KissICP::RegisterFrame(const std::vector<Eigen::Vec
                                                           sigma / 3.0);
     const auto model_deviation = initial_guess.inverse() * new_pose;
     adaptive_threshold_.UpdateModelDeviation(model_deviation);
-    local_map_.Update(frame_downsample, new_pose);
+    //IH 4/8/23: the localization will be performed w.r.t pre-built map, thus there is no need for the update step!
+    //local_map_.Update(frame_downsample, new_pose);
+
     poses_.push_back(new_pose);
     return {frame, source};
 }
@@ -105,6 +109,29 @@ bool KissICP::HasMoved() {
     if (poses_.empty()) return false;
     const double motion = (poses_.front().inverse() * poses_.back()).translation().norm();
     return motion > 5.0 * config_.min_motion_th;
+}
+
+void KissICP::LoadMap(std::string &map_pth) {
+    std::ifstream fin(map_pth);
+
+    if (!fin.is_open()) {
+        printf("ERROR: failed to open file: %s\n", map_pth.c_str());
+        exit(EXIT_FAILURE);
+    }
+
+    while (!fin.eof()) {
+        Eigen::Vector3d newPoint;
+        fin >> newPoint[0] >> newPoint[1] >> newPoint[2];
+        // Ignore the rest of the line
+        fin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        points_.push_back(newPoint);
+    }
+
+    printf("%s\n", map_pth.c_str());
+    printf("number of points %zu\n", points_.size());
+
+    local_map_.AddPoints(points_);
+
 }
 
 }  // namespace kiss_icp::pipeline

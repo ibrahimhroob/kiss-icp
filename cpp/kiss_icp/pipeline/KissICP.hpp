@@ -54,7 +54,7 @@ public:
 public:
     explicit KissICP(const KISSConfig &config)
         : config_(config),
-          local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel),
+          local_map_(config.voxel_size, config.max_points_per_voxel),
           adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {}
 
     KissICP() : KissICP(KISSConfig{}) {}
@@ -67,6 +67,7 @@ public:
     double GetAdaptiveThreshold();
     Sophus::SE3d GetPredictionModel() const;
     bool HasMoved();
+    void LoadMap(std::string& map_pth);
 
 public:
     // Extra C++ API to facilitate ROS debugging
@@ -79,6 +80,8 @@ private:
     KISSConfig config_;
     VoxelHashMap local_map_;
     AdaptiveThreshold adaptive_threshold_;
+
+    std::vector<Eigen::Vector3d> points_;
 };
 
 }  // namespace kiss_icp::pipeline

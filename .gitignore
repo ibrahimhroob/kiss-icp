@@ -366,3 +366,4 @@ nn
 
 # VSCode
 .vscode
+.idea/*

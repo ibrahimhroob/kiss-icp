@@ -70,6 +70,7 @@ private:
     /// Global/map coordinate frame.
     std::string odom_frame_{"odom"};
     std::string child_frame_{"base_link"};
+    std::string map_pth_{""};
 };
 
 }  // namespace kiss_icp_ros

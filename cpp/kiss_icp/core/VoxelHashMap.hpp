@@ -57,6 +57,10 @@ struct VoxelHashMap {
           max_distance_(max_distance),
           max_points_per_voxel_(max_points_per_voxel) {}
 
+    explicit VoxelHashMap(double voxel_size, int max_points_per_voxel)
+        : voxel_size_(voxel_size),
+          max_points_per_voxel_(max_points_per_voxel) {}
+
     Vector3dVectorTuple GetCorrespondences(const Vector3dVector &points,
                                            double max_correspondance_distance) const;
     inline void Clear() { map_.clear(); }
