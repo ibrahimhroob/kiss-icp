@@ -5,7 +5,8 @@
   <arg name="visualize" default="true"/>
   <arg name="odom_frame" default="odom"/>
   <arg name="child_frame" default="base_link"/>
-  <arg name="topic" default="/os_cloud_node/points"/>
+  <arg name="topic_raw" default="/os_cloud_node/points"/>
+  <arg name="topic_filtered" default="/cloud_filtered"/>
   <arg name="publish_odom_tf" default="true"/>
   <arg name="publish_alias_tf" default="true"/>
 
@@ -19,7 +20,8 @@
   <!-- Odometry node -->
   <node pkg="kiss_icp" type="odometry_node" name="odometry_node" output="screen">
     <!-- ROS params -->
-    <remap from="pointcloud_topic" to="$(arg topic)"/>
+    <remap from="pointcloud_topic_raw" to="$(arg topic_raw)"/>
+    <remap from="pointcloud_topic_filtered" to="$(arg topic_filtered)"/>
     <param name="odom_frame" value="$(arg odom_frame)"/>
     <param name="child_frame" value="$(arg child_frame)"/>
     <param name="publish_odom_tf" value="$(arg publish_odom_tf)"/>
