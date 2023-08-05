@@ -125,6 +125,37 @@ inline std::unique_ptr<PointCloud2> CreatePointCloud2Msg(const size_t n_points,
     return cloud_msg;
 }
 
+inline std::unique_ptr<PointCloud2> CreatePointCloud2MsgIntensity(const size_t n_points,
+                                                         const Header &header,
+                                                         bool timestamp = false) {
+    auto cloud_msg = std::make_unique<PointCloud2>();
+    sensor_msgs::PointCloud2Modifier modifier(*cloud_msg);
+    cloud_msg->header = header;
+    cloud_msg->header.frame_id = FixFrameId(cloud_msg->header.frame_id);
+    cloud_msg->fields.clear();
+    int offset = 0;
+    
+    offset = addPointField(*cloud_msg, "x", 1, PointField::FLOAT32, offset);
+    offset = addPointField(*cloud_msg, "y", 1, PointField::FLOAT32, offset);
+    offset = addPointField(*cloud_msg, "z", 1, PointField::FLOAT32, offset);
+    
+    // Add intensity field (assuming FLOAT32 type)
+    offset = addPointField(*cloud_msg, "intensity", 1, PointField::FLOAT32, offset);
+    
+    if (timestamp) {
+        // assuming timestamp on a velodyne fashion for now (between 0.0 and 1.0)
+        offset = addPointField(*cloud_msg, "time", 1, PointField::FLOAT64, offset);
+    }
+
+    // Resize the point cloud accordingly
+    cloud_msg->point_step = offset;
+    cloud_msg->row_step = cloud_msg->width * cloud_msg->point_step;
+    cloud_msg->data.resize(cloud_msg->height * cloud_msg->row_step);
+    modifier.resize(n_points);
+
+    return cloud_msg;
+}
+
 inline void FillPointCloud2XYZ(const std::vector<Eigen::Vector3d> &points, PointCloud2 &msg) {
     sensor_msgs::PointCloud2Iterator<float> msg_x(msg, "x");
     sensor_msgs::PointCloud2Iterator<float> msg_y(msg, "y");
@@ -134,6 +165,27 @@ inline void FillPointCloud2XYZ(const std::vector<Eigen::Vector3d> &points, Point
         *msg_x = point.x();
         *msg_y = point.y();
         *msg_z = point.z();
+    }
+}
+
+inline void FillPointCloud2XYZI(const std::vector<Eigen::Vector3d> &points, const std::vector<float> &intensity_values, PointCloud2 &msg) {
+    sensor_msgs::PointCloud2Iterator<float> msg_x(msg, "x");
+    sensor_msgs::PointCloud2Iterator<float> msg_y(msg, "y");
+    sensor_msgs::PointCloud2Iterator<float> msg_z(msg, "z");
+    sensor_msgs::PointCloud2Iterator<float> msg_intensity(msg, "intensity");
+
+    for (size_t i = 0; i < points.size(); i++, ++msg_x, ++msg_y, ++msg_z, ++msg_intensity) {
+        const Eigen::Vector3d &point = points[i];
+        *msg_x = point.x();
+        *msg_y = point.y();
+        *msg_z = point.z();
+        
+        // Check if there are enough intensity values, otherwise set intensity to 0
+        if (i < intensity_values.size()) {
+            *msg_intensity = intensity_values[i];
+        } else {
+            *msg_intensity = 0.0;
+        }
     }
 }
 
@@ -163,10 +215,36 @@ inline std::vector<Eigen::Vector3d> PointCloud2ToEigen(const PointCloud2::ConstP
     return points;
 }
 
+inline std::tuple<std::vector<Eigen::Vector3d>, std::vector<float>> PointCloud2ToEigenWithSeparateIntensity(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+    std::vector<Eigen::Vector3d> points;
+    std::vector<float> intensities;
+    points.reserve(msg->height * msg->width);
+    intensities.reserve(msg->height * msg->width);
+    sensor_msgs::PointCloud2ConstIterator<float> msg_x(*msg, "x");
+    sensor_msgs::PointCloud2ConstIterator<float> msg_y(*msg, "y");
+    sensor_msgs::PointCloud2ConstIterator<float> msg_z(*msg, "z");
+    sensor_msgs::PointCloud2ConstIterator<float> msg_intensity(*msg, "intensity");
+
+    for (size_t i = 0; i < msg->height * msg->width; ++i, ++msg_x, ++msg_y, ++msg_z, ++msg_intensity) {
+        points.emplace_back(*msg_x, *msg_y, *msg_z);
+        intensities.emplace_back(static_cast<double>(*msg_intensity));
+    }
+
+    return {points, intensities};
+}
+
 inline std::unique_ptr<PointCloud2> EigenToPointCloud2(const std::vector<Eigen::Vector3d> &points,
                                                        const Header &header) {
     auto msg = CreatePointCloud2Msg(points.size(), header);
     FillPointCloud2XYZ(points, *msg);
+    return msg;
+}
+
+inline std::unique_ptr<PointCloud2> EigenToPointCloud2Intensity(const std::vector<Eigen::Vector3d> &points,
+                                                                const std::vector<float> &intensity,
+                                                                const Header &header) {
+    auto msg = CreatePointCloud2MsgIntensity(points.size(), header);
+    FillPointCloud2XYZI(points, intensity, *msg);
     return msg;
 }
 
