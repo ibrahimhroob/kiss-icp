@@ -67,6 +67,7 @@ public:
     double GetAdaptiveThreshold();
     Sophus::SE3d GetPredictionModel() const;
     bool HasMoved();
+    
     void LoadMap(std::string& map_pth);
 
 public:

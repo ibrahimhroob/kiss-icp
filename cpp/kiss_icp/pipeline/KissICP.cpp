@@ -114,6 +114,8 @@ bool KissICP::HasMoved() {
 void KissICP::LoadMap(std::string &map_pth) {
     std::ifstream fin(map_pth);
 
+    printf("Loading map from: %s ...\n", map_pth.c_str());
+
     if (!fin.is_open()) {
         printf("ERROR: failed to open file: %s\n", map_pth.c_str());
         exit(EXIT_FAILURE);
@@ -126,12 +128,10 @@ void KissICP::LoadMap(std::string &map_pth) {
         fin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         points_.push_back(newPoint);
     }
-
-    printf("%s\n", map_pth.c_str());
-    printf("number of points %zu\n", points_.size());
+    
+    printf("Map loaded with %zu points.\n", points_.size());
 
     local_map_.AddPoints(points_);
-
 }
 
 }  // namespace kiss_icp::pipeline
