@@ -49,6 +49,8 @@ namespace kiss_icp_ros {
 using utils::EigenToPointCloud2;
 using utils::GetTimestamps;
 using utils::PointCloud2ToEigen;
+using utils::EigenToPointCloud2Intensity;
+using utils::PointCloud2ToEigenWithSeparateIntensity;
 
 OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle &pnh)
     : nh_(nh), pnh_(pnh) {
@@ -76,12 +78,18 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
     odometry_.LoadMap(map_pth_);
 
     // Initialize subscribers
-    pointcloud_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("pointcloud_topic", queue_size_,
+    pointcloud_raw_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("pointcloud_topic_raw", queue_size_,
+                                                              &OdometryServer::EstimateFrame, this);
+
+    pointcloud_filtered_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("pointcloud_topic_filtered", queue_size_,
                                                               &OdometryServer::RegisterFrame, this);
 
     // Initialize publishers
     odom_publisher_ = pnh_.advertise<nav_msgs::Odometry>("odometry", queue_size_);
-    frame_publisher_ = pnh_.advertise<sensor_msgs::PointCloud2>("frame", queue_size_);
+    
+    frame_publisher_estimated_ = pnh_.advertise<sensor_msgs::PointCloud2>("frame_estimated", queue_size_);
+    frame_publisher_registered_ = pnh_.advertise<sensor_msgs::PointCloud2>("frame_registered", queue_size_);
+    
     kpoints_publisher_ = pnh_.advertise<sensor_msgs::PointCloud2>("keypoints", queue_size_);
     map_publisher_ = pnh_.advertise<sensor_msgs::PointCloud2>("local_map", queue_size_);
 
@@ -111,12 +119,42 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
     ROS_INFO("KISS-ICP ROS 1 Odometry Node Initialized");
 }
 
-void OdometryServer::RegisterFrame(const sensor_msgs::PointCloud2::ConstPtr &msg) {
-    const auto points = PointCloud2ToEigen(msg);
+void OdometryServer::EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+    const auto &[points, intensities] = PointCloud2ToEigenWithSeparateIntensity(msg);
     const auto timestamps = [&]() -> std::vector<double> {
         if (!config_.deskew) return {};
         return GetTimestamps(msg);
     }();
+
+    const auto prediction = odometry_.GetPredictionModel();
+    const auto last_pose = !odometry_.poses().empty() ? odometry_.poses().back() : Sophus::SE3d();
+    const auto guess = last_pose * prediction;
+
+    // Transform the points into the guess pose 
+    auto TransformPoints = [](const Sophus::SE3d &guess, std::vector<Eigen::Vector3d> &points) {
+        std::transform(points.begin(), points.end(), points.begin(),
+                       [&](const auto &point) { return guess * point; });
+    };
+    
+    raw_frame_header_ = msg->header;
+    raw_frame_header_.frame_id = child_frame_;
+    frame_publisher_estimated_.publish(*std::move(EigenToPointCloud2Intensity(points, intensities, raw_frame_header_)));
+
+}
+
+void OdometryServer::RegisterFrame(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+    const auto &[points, intensities] = PointCloud2ToEigenWithSeparateIntensity(msg);
+    const auto timestamps = [&]() -> std::vector<double> {
+        if (!config_.deskew) return {};
+        return GetTimestamps(msg);
+    }();
+
+    // In theory, if every thing is in sync, the time stamp of the raw and filtered msg should be identical 
+    if (raw_frame_header_.stamp != msg->header.stamp) {
+        ROS_INFO("Raw Header Stamp: %f", raw_frame_header_.stamp.toSec());
+        ROS_INFO("Filtered Header Stamp: %f", msg->header.stamp.toSec());
+        ROS_ASSERT_MSG(true, "Raw and filtered messages stamp are not the same!");
+    }
 
     // Register frame, main entry point to KISS-ICP pipeline
     const auto &[frame, keypoints] = odometry_.RegisterFrame(points, timestamps);
@@ -168,7 +206,7 @@ void OdometryServer::RegisterFrame(const sensor_msgs::PointCloud2::ConstPtr &msg
     // Publish KISS-ICP internal data, just for debugging
     auto frame_header = msg->header;
     frame_header.frame_id = child_frame_;
-    frame_publisher_.publish(*std::move(EigenToPointCloud2(frame, frame_header)));
+    frame_publisher_registered_.publish(*std::move(EigenToPointCloud2Intensity(frame, intensities, frame_header)));
     kpoints_publisher_.publish(*std::move(EigenToPointCloud2(keypoints, frame_header)));
 
     // Map is referenced to the odometry_frame

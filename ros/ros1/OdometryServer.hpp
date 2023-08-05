@@ -39,8 +39,10 @@ public:
     OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle &pnh);
 
 private:
-    /// Register new frame
+    /// Register frame
     void RegisterFrame(const sensor_msgs::PointCloud2::ConstPtr &msg);
+
+    void EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg);
 
     /// Ros node stuff
     ros::NodeHandle nh_;
@@ -53,13 +55,15 @@ private:
     bool publish_alias_tf_;
 
     /// Data subscribers.
-    ros::Subscriber pointcloud_sub_;
+    ros::Subscriber pointcloud_raw_sub_;
+    ros::Subscriber pointcloud_filtered_sub_;
 
     /// Data publishers.
     ros::Publisher odom_publisher_;
     ros::Publisher traj_publisher_;
     nav_msgs::Path path_msg_;
-    ros::Publisher frame_publisher_;
+    ros::Publisher frame_publisher_estimated_;
+    ros::Publisher frame_publisher_registered_;
     ros::Publisher kpoints_publisher_;
     ros::Publisher map_publisher_;
 
@@ -71,6 +75,8 @@ private:
     std::string odom_frame_{"odom"};
     std::string child_frame_{"base_link"};
     std::string map_pth_{""};
+
+    std_msgs::Header raw_frame_header_;
 };
 
 }  // namespace kiss_icp_ros
