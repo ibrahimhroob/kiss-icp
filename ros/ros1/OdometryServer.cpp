@@ -115,8 +115,23 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
         br.sendTransform(alias_transform_msg);
     }
 
-    // publish odometry msg
+    // publish Global map, for some reason I need to repeat this step!! 
+    for(int i = 0; i < 10 ; i++)
+        PublishMap();
+
+    ROS_INFO("Global map published");
+
     ROS_INFO("KISS-ICP ROS 1 Odometry Node Initialized");
+}
+
+void OdometryServer::PublishMap(){
+    std_msgs::Header local_map_header;
+
+    local_map_header.stamp = ros::Time::now();
+    // Map is referenced to the odometry_frame
+    local_map_header.frame_id = odom_frame_;
+    
+    map_publisher_.publish(*std::move(EigenToPointCloud2(odometry_.LocalMap(), local_map_header)));
 }
 
 void OdometryServer::EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg) {
@@ -150,14 +165,13 @@ void OdometryServer::RegisterFrame(const sensor_msgs::PointCloud2::ConstPtr &msg
     }();
 
     // In theory, if every thing is in sync, the time stamp of the raw and filtered msg should be identical 
-    if (raw_frame_header_.stamp != msg->header.stamp) {
-        ROS_INFO("Raw Header Stamp: %f", raw_frame_header_.stamp.toSec());
-        ROS_INFO("Filtered Header Stamp: %f", msg->header.stamp.toSec());
-        ROS_ASSERT_MSG(true, "Raw and filtered messages stamp are not the same!");
+    double df = raw_frame_header_.stamp.toSec() - msg->header.stamp.toSec();
+    if (df != 0){
+        ROS_INFO("Raw and flitered clouds are out of sync with time diff: %f", df);
     }
 
     // Register frame, main entry point to KISS-ICP pipeline
-    const auto &[frame, keypoints] = odometry_.RegisterFrame(points, timestamps);
+    const auto &[frame, keypoints] = odometry_.RegisterFrame(points);
 
     // PublishPose
     const auto pose = odometry_.poses().back();
@@ -209,10 +223,6 @@ void OdometryServer::RegisterFrame(const sensor_msgs::PointCloud2::ConstPtr &msg
     frame_publisher_registered_.publish(*std::move(EigenToPointCloud2Intensity(frame, intensities, frame_header)));
     kpoints_publisher_.publish(*std::move(EigenToPointCloud2(keypoints, frame_header)));
 
-    // Map is referenced to the odometry_frame
-    auto local_map_header = msg->header;
-    local_map_header.frame_id = odom_frame_;
-    map_publisher_.publish(*std::move(EigenToPointCloud2(odometry_.LocalMap(), local_map_header)));
 }
 }  // namespace kiss_icp_ros
 

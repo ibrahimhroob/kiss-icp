@@ -44,6 +44,8 @@ private:
 
     void EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg);
 
+    void PublishMap();
+
     /// Ros node stuff
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
