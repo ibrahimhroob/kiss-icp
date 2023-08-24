@@ -44,7 +44,7 @@ private:
 
     void EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg);
 
-    void PublishMap();
+    void PublishMap(const ros::WallTimerEvent& event);
 
     /// Ros node stuff
     ros::NodeHandle nh_;
@@ -79,6 +79,7 @@ private:
     std::string map_pth_{""};
 
     std_msgs::Header raw_frame_header_;
+    ros::WallTimer map_pub_timer_;
 };
 
 }  // namespace kiss_icp_ros

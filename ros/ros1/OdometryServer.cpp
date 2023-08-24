@@ -114,17 +114,13 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
         alias_transform_msg.child_frame_id = "base_link";
         br.sendTransform(alias_transform_msg);
     }
-
-    // publish Global map, for some reason I need to repeat this step!! 
-    for(int i = 0; i < 10 ; i++)
-        PublishMap();
-
-    ROS_INFO("Global map published");
-
+ 
+    map_pub_timer_ = nh_.createWallTimer(ros::WallDuration(1.0), &OdometryServer::PublishMap, this, true, true);
+  
     ROS_INFO("KISS-ICP ROS 1 Odometry Node Initialized");
 }
 
-void OdometryServer::PublishMap(){
+void OdometryServer::PublishMap(const ros::WallTimerEvent& event){
     std_msgs::Header local_map_header;
 
     local_map_header.stamp = ros::Time::now();
