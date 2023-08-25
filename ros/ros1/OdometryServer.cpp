@@ -86,6 +86,7 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
 
     // Initialize publishers
     odom_publisher_ = pnh_.advertise<nav_msgs::Odometry>("odometry", queue_size_);
+    odom_publisher_estimate_ = pnh_.advertise<nav_msgs::Odometry>("odometry_estimate", queue_size_);
     
     frame_publisher_estimated_ = pnh_.advertise<sensor_msgs::PointCloud2>("frame_estimated", queue_size_);
     frame_publisher_registered_ = pnh_.advertise<sensor_msgs::PointCloud2>("frame_registered", queue_size_);
@@ -131,39 +132,44 @@ void OdometryServer::PublishMap(const ros::WallTimerEvent& event){
 }
 
 void OdometryServer::EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+    raw_frame_header_ = msg->header;
     const auto &[points, intensities] = PointCloud2ToEigenWithSeparateIntensity(msg);
-    const auto timestamps = [&]() -> std::vector<double> {
-        if (!config_.deskew) return {};
-        return GetTimestamps(msg);
-    }();
 
     const auto prediction = odometry_.GetPredictionModel();
     const auto last_pose = !odometry_.poses().empty() ? odometry_.poses().back() : Sophus::SE3d();
     const auto guess = last_pose * prediction;
 
-    // Transform the points into the guess pose 
-    auto TransformPoints = [](const Sophus::SE3d &guess, std::vector<Eigen::Vector3d> &points) {
-        std::transform(points.begin(), points.end(), points.begin(),
-                       [&](const auto &point) { return guess * point; });
-    };
-    
-    raw_frame_header_ = msg->header;
-    raw_frame_header_.frame_id = child_frame_;
-    frame_publisher_estimated_.publish(*std::move(EigenToPointCloud2Intensity(points, intensities, raw_frame_header_)));
+    // Convert from Eigen to ROS types
+    const Eigen::Vector3d t_current = guess.translation();
+    const Eigen::Quaterniond q_current = guess.unit_quaternion();
+
+    // publish trajectory msg
+    geometry_msgs::PoseStamped pose_msg;
+    pose_msg.pose.orientation.x = q_current.x();
+    pose_msg.pose.orientation.y = q_current.y();
+    pose_msg.pose.orientation.z = q_current.z();
+    pose_msg.pose.orientation.w = q_current.w();
+    pose_msg.pose.position.x = t_current.x();
+    pose_msg.pose.position.y = t_current.y();
+    pose_msg.pose.position.z = t_current.z();
+    pose_msg.header.stamp = msg->header.stamp;
+
+    // publish odometry msg
+    auto odom_msg = std::make_unique<nav_msgs::Odometry>();
+    odom_msg->header = pose_msg.header;
+    odom_msg->child_frame_id = child_frame_;
+    odom_msg->pose.pose = pose_msg.pose;
+    odom_publisher_estimate_.publish(*std::move(odom_msg));
 
 }
 
 void OdometryServer::RegisterFrame(const sensor_msgs::PointCloud2::ConstPtr &msg) {
     const auto &[points, intensities] = PointCloud2ToEigenWithSeparateIntensity(msg);
-    const auto timestamps = [&]() -> std::vector<double> {
-        if (!config_.deskew) return {};
-        return GetTimestamps(msg);
-    }();
-
+    
     // In theory, if every thing is in sync, the time stamp of the raw and filtered msg should be identical 
     double df = raw_frame_header_.stamp.toSec() - msg->header.stamp.toSec();
     if (df != 0){
-        ROS_INFO("Raw and flitered clouds are out of sync with time diff: %f", df);
+        ROS_WARN("Raw and flitered clouds are out of sync with time diff: %f", df);
     }
 
     // Register frame, main entry point to KISS-ICP pipeline

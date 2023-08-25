@@ -62,6 +62,7 @@ private:
 
     /// Data publishers.
     ros::Publisher odom_publisher_;
+    ros::Publisher odom_publisher_estimate_;
     ros::Publisher traj_publisher_;
     nav_msgs::Path path_msg_;
     ros::Publisher frame_publisher_estimated_;
