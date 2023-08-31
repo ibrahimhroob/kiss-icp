@@ -14,7 +14,7 @@
   <arg name="deskew" default="false"/>
   <arg name="max_range" default="100.0" />
   <arg name="min_range" default="0.0" />
-  <arg name="voxel_size" default="0.25" />
+  <arg name="voxel_size" default="0.20" />
   <arg name="map_pth" default="/sps/data/maps/april_6_ABEF_full.asc" />
 
   <!-- Odometry node -->
@@ -31,9 +31,9 @@
     <param name="min_range" value="$(arg min_range)"/>
     <param name="deskew" value="$(arg deskew)"/>
     <param name="voxel_size" value="$(arg voxel_size)"/>
-    <param name="max_points_per_voxel" value="40"/>
-    <param name="initial_threshold" value="1.0"/>
-    <param name="min_motion_th" value="0.05" />
+    <param name="max_points_per_voxel" value="20"/>
+    <param name="initial_threshold" value="2.0"/>
+    <param name="min_motion_th" value="0.1" />
     <param name="map_pth" value="$(arg map_pth)" />
   </node>
 

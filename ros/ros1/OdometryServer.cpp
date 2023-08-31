@@ -135,7 +135,18 @@ void OdometryServer::EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg
     raw_frame_header_ = msg->header;
     const auto &[points, intensities] = PointCloud2ToEigenWithSeparateIntensity(msg);
 
-    const auto prediction = odometry_.GetPredictionModel();
+    auto prediction = odometry_.GetPredictionModel();
+    double& x = prediction.translation().x();
+    double& y = prediction.translation().y();
+
+    x = std::min(x, 0.05);
+    y = std::min(y, 0.05);
+
+    x = std::max(x, -0.05);
+    y = std::max(y, -0.05);
+
+    // printf("X: %.3f\tY: %.3f\tZ:%.3f\n",x,y, prediction.translation().z());
+
     const auto last_pose = !odometry_.poses().empty() ? odometry_.poses().back() : Sophus::SE3d();
     const auto guess = last_pose * prediction;
 
