@@ -15,6 +15,9 @@
   <arg name="max_range" default="100.0" />
   <arg name="min_range" default="0.0" />
   <arg name="voxel_size" default="0.20" />
+  <arg name="mapmos_voxel_size" default="0.5" />
+  <arg name="mapmos_max_range" default="10" />
+  
   <arg name="map_pth" default="/sps/data/maps/april_6_ABEF_full.asc" />
 
   <!-- Odometry node -->
@@ -35,6 +38,9 @@
     <param name="initial_threshold" value="2.0"/>
     <param name="min_motion_th" value="0.1" />
     <param name="map_pth" value="$(arg map_pth)" />
+    <param name="mapmos_voxel_size" value="$(arg mapmos_voxel_size)" />
+    <param name="mapmos_max_range" value="$(arg mapmos_max_range)" />
+
   </node>
 
   <!-- Rosbag player, if bagfile argument was specified -->

@@ -79,7 +79,11 @@ KissICP::Vector3dVectorTuple KissICP::RegisterFrame(const std::vector<Eigen::Vec
     adaptive_threshold_.UpdateModelDeviation(model_deviation);
     //IH 4/8/23: the localization will be performed w.r.t pre-built map, thus there is no need for the update step!
     //local_map_.Update(frame_downsample, new_pose);
-
+    
+    //IH 4/9/23: add MapMOS mapping since this is needed for testing mapmos algorithm
+    const auto mosmap_frame_downsample = kiss_icp::VoxelDownsample(cropped_frame, config_.mapmos_voxel_size * 0.5);
+    mos_map_.Update(mosmap_frame_downsample, new_pose);
+    
     poses_.push_back(new_pose);
     return {frame, source};
 }

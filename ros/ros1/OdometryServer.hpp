@@ -69,6 +69,7 @@ private:
     ros::Publisher frame_publisher_registered_;
     ros::Publisher kpoints_publisher_;
     ros::Publisher map_publisher_;
+    ros::Publisher mos_map_publisher_;
 
     /// KISS-ICP
     kiss_icp::pipeline::KissICP odometry_;

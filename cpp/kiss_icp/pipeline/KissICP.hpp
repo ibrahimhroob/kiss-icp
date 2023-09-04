@@ -34,7 +34,9 @@ namespace kiss_icp::pipeline {
 struct KISSConfig {
     // map params
     double voxel_size = 1.0;
+    double mapmos_voxel_size = 1.0;
     double max_range = 100.0;
+    double mapmos_max_range = 50;
     double min_range = 5.0;
     int max_points_per_voxel = 20;
 
@@ -55,6 +57,7 @@ public:
     explicit KissICP(const KISSConfig &config)
         : config_(config),
           local_map_(config.voxel_size, config.max_points_per_voxel),
+          mos_map_(config.mapmos_voxel_size, config.mapmos_max_range, config.max_points_per_voxel),
           adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {}
 
     KissICP() : KissICP(KISSConfig{}) {}
@@ -73,6 +76,8 @@ public:
 public:
     // Extra C++ API to facilitate ROS debugging
     std::vector<Eigen::Vector3d> LocalMap() const { return local_map_.Pointcloud(); };
+    std::vector<Eigen::Vector3d> MosMap() const { return mos_map_.Pointcloud(); };
+
     std::vector<Sophus::SE3d> poses() const { return poses_; };
 
 private:
@@ -80,6 +85,7 @@ private:
     std::vector<Sophus::SE3d> poses_;
     KISSConfig config_;
     VoxelHashMap local_map_;
+    VoxelHashMap mos_map_;
     AdaptiveThreshold adaptive_threshold_;
 
     std::vector<Eigen::Vector3d> points_;

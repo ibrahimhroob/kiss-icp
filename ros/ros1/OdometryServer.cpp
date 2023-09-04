@@ -59,9 +59,11 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
     pnh_.param("publish_alias_tf", publish_alias_tf_, true);
     pnh_.param("publish_odom_tf", publish_odom_tf_, true);
     pnh_.param("max_range", config_.max_range, config_.max_range);
+    pnh_.param("mapmos_max_range", config_.mapmos_max_range, config_.mapmos_max_range);
     pnh_.param("min_range", config_.min_range, config_.min_range);
     pnh_.param("deskew", config_.deskew, config_.deskew);
     pnh_.param("voxel_size", config_.voxel_size, config_.max_range / 100.0);
+    pnh_.param("mapmos_voxel_size", config_.mapmos_voxel_size, config_.max_range / 100.0);
     pnh_.param("max_points_per_voxel", config_.max_points_per_voxel, config_.max_points_per_voxel);
     pnh_.param("initial_threshold", config_.initial_threshold, config_.initial_threshold);
     pnh_.param("min_motion_th", config_.min_motion_th, config_.min_motion_th);
@@ -93,6 +95,7 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
     
     kpoints_publisher_ = pnh_.advertise<sensor_msgs::PointCloud2>("keypoints", queue_size_);
     map_publisher_ = pnh_.advertise<sensor_msgs::PointCloud2>("local_map", queue_size_);
+    mos_map_publisher_ = pnh_.advertise<sensor_msgs::PointCloud2>("mos_map", queue_size_);
 
     // Initialize trajectory publisher
     path_msg_.header.frame_id = odom_frame_;
@@ -171,6 +174,11 @@ void OdometryServer::EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg
     odom_msg->child_frame_id = child_frame_;
     odom_msg->pose.pose = pose_msg.pose;
     odom_publisher_estimate_.publish(*std::move(odom_msg));
+
+    // MOS Map is referenced to the odometry_frame
+    auto mos_map_header = msg->header;
+    mos_map_header.frame_id = odom_frame_;
+    mos_map_publisher_.publish(*std::move(EigenToPointCloud2(odometry_.MosMap(), mos_map_header)));
 
 }
 
