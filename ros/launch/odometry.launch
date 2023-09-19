@@ -6,7 +6,7 @@
   <arg name="odom_frame" default="odom"/>
   <arg name="child_frame" default="base_link"/>
   <arg name="topic_raw" default="/os_cloud_node/points"/>
-  <arg name="topic_filtered" default="/cloud_filtered_kiss"/>
+  <arg name="topic_filtered" default="/cloud_filtered"/>
   <arg name="publish_odom_tf" default="true"/>
   <arg name="publish_alias_tf" default="true"/>
 
@@ -17,8 +17,9 @@
   <arg name="voxel_size" default="0.20" />
   <arg name="mapmos_voxel_size" default="0.5" />
   <arg name="mapmos_max_range" default="10" />
+  <arg name="max_motion_th" default="0.1" />
   
-  <arg name="map_pth" default="/sps/data/maps/april_6_ABEF_full.asc" />
+  <arg name="map_pth" default="/sps/data/maps/base_map.asc" />
 
   <!-- Odometry node -->
   <node pkg="kiss_icp" type="odometry_node" name="odometry_node" output="screen">
@@ -40,6 +41,7 @@
     <param name="map_pth" value="$(arg map_pth)" />
     <param name="mapmos_voxel_size" value="$(arg mapmos_voxel_size)" />
     <param name="mapmos_max_range" value="$(arg mapmos_max_range)" />
+    <param name="max_motion_th" value="$(arg max_motion_th)" />
 
   </node>
 

@@ -67,6 +67,7 @@ OdometryServer::OdometryServer(const ros::NodeHandle &nh, const ros::NodeHandle 
     pnh_.param("max_points_per_voxel", config_.max_points_per_voxel, config_.max_points_per_voxel);
     pnh_.param("initial_threshold", config_.initial_threshold, config_.initial_threshold);
     pnh_.param("min_motion_th", config_.min_motion_th, config_.min_motion_th);
+    pnh_.param("max_motion_th", config_.max_motion_th, config_.max_motion_th);
     pnh_.param("map_pth", map_pth_, map_pth_);
     if (config_.max_range < config_.min_range) {
         ROS_WARN("[WARNING] max_range is smaller than min_range, setting min_range to 0.0");
@@ -142,11 +143,11 @@ void OdometryServer::EstimateFrame(const sensor_msgs::PointCloud2::ConstPtr &msg
     double& x = prediction.translation().x();
     double& y = prediction.translation().y();
 
-    x = std::min(x, 0.05);
-    y = std::min(y, 0.05);
+    x = std::min(x, config_.max_motion_th);
+    y = std::min(y, config_.max_motion_th);
 
-    x = std::max(x, -0.05);
-    y = std::max(y, -0.05);
+    x = std::max(x, -config_.max_motion_th);
+    y = std::max(y, -config_.max_motion_th);
 
     // printf("X: %.3f\tY: %.3f\tZ:%.3f\n",x,y, prediction.translation().z());
 
